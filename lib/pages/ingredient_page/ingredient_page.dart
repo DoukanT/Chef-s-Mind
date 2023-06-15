@@ -1,15 +1,15 @@
-import 'package:chefs_mind/pages/recipe_page/recipe_page.dart';
-import 'package:chefs_mind/services/api_service.dart';
-import 'package:chefs_mind/services/storage_service/shared_preferences_storage.dart';
-import 'package:flutter/material.dart';
 import 'package:chefs_mind/main.dart';
+import 'package:chefs_mind/pages/recipe_page/recipe_page.dart';
+import 'package:chefs_mind/pages/ingredient_page/ingredient_page_logic.dart';
+import 'package:flutter/material.dart';
 
 class IngredientPage extends StatefulWidget {
-  const IngredientPage(
-      {super.key,
-      required this.ingredientId,
-      required this.ingredientName,
-      required this.ingredientImage});
+  const IngredientPage({
+    Key? key,
+    required this.ingredientId,
+    required this.ingredientName,
+    required this.ingredientImage,
+  }) : super(key: key);
 
   final String ingredientName;
   final String ingredientImage;
@@ -20,12 +20,12 @@ class IngredientPage extends StatefulWidget {
 }
 
 class _IngredientPageState extends State<IngredientPage> {
-  bool isInList = false;
+  final _logic = IngredientPageLogic();
+
   @override
   void initState() {
     super.initState();
-    checkIfIsInTheList(widget.ingredientId)
-        .then((value) => setState(() => isInList = value));
+    _logic.checkIfIsInList(widget.ingredientId);
   }
 
   @override
@@ -35,22 +35,19 @@ class _IngredientPageState extends State<IngredientPage> {
         backgroundColor: Colors.red,
         title: Text(widget.ingredientName.toTitleCase()),
         actions: [
-          IconButton(
-            onPressed: () {
-              checkIfIsInTheList(widget.ingredientId).then((value) {
-                if (value) {
-                  removeIngredient(widget.ingredientId)
-                      .then((value) => setState(() => isInList = !isInList));
-                } else {
-                  addIngredient(widget.ingredientId, widget.ingredientName,
-                          widget.ingredientImage)
-                      .then((value) => setState(() => isInList = !isInList));
-                }
-              });
+          ValueListenableBuilder(
+            valueListenable: _logic.isInList,
+            builder: (context, value, child) {
+              return IconButton(
+                onPressed: () {
+                  _logic.toggleIngredient(widget.ingredientId,
+                      widget.ingredientName, widget.ingredientImage);
+                },
+                icon: _logic.isInList.value
+                    ? const Icon(Icons.bookmark_remove)
+                    : const Icon(Icons.bookmark_add),
+              );
             },
-            icon: isInList
-                ? const Icon(Icons.bookmark_remove)
-                : const Icon(Icons.bookmark_add),
           ),
         ],
       ),
@@ -88,14 +85,13 @@ class _IngredientPageState extends State<IngredientPage> {
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: Colors.black45,
-                        ),
-                      );
+                          child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                        color: Colors.black45,
+                      ));
                     },
                   ),
                 ),
@@ -111,33 +107,35 @@ class _IngredientPageState extends State<IngredientPage> {
                 height: 16,
               ),
               Expanded(
-                  child: FutureBuilder(
-                future: getRecipeByIngredient(widget.ingredientName),
-                builder: (context, snapshot) {
-                  if (snapshot.hasData) {
-                    return GridView.builder(
-                      padding: const EdgeInsets.only(
-                          left: 8, right: 8, top: 0, bottom: 10),
-                      scrollDirection: Axis.vertical,
-                      shrinkWrap: true,
-                      itemCount: snapshot.data!.length,
-                      itemBuilder: (context, index) {
-                        return buildCard(snapshot.data![index]);
-                      },
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 16,
-                        mainAxisSpacing: 16,
+                child: FutureBuilder<List>(
+                  future: _logic.getRecipesByIngredient(widget.ingredientName),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasData) {
+                      return GridView.builder(
+                        padding: const EdgeInsets.only(
+                            left: 8, right: 8, top: 0, bottom: 10),
+                        scrollDirection: Axis.vertical,
+                        shrinkWrap: true,
+                        itemCount: snapshot.data!.length,
+                        itemBuilder: (context, index) {
+                          return buildCard(snapshot.data![index]);
+                        },
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                        ),
+                      );
+                    }
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        color: Colors.redAccent,
                       ),
                     );
-                  }
-                  return const Center(
-                      child: CircularProgressIndicator(
-                    color: Colors.redAccent,
-                  ));
-                },
-              )),
+                  },
+                ),
+              ),
             ],
           ),
         ),
@@ -152,7 +150,8 @@ class _IngredientPageState extends State<IngredientPage> {
           context,
           MaterialPageRoute(
             builder: (context) => RecipePage(recipeId: data["id"]),
-        ));
+          ),
+        );
       },
       child: ClipRRect(
         borderRadius: BorderRadius.circular(8),
@@ -168,14 +167,13 @@ class _IngredientPageState extends State<IngredientPage> {
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
                       return Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: Colors.black45,
-                        ),
-                      );
+                          child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
+                                loadingProgress.expectedTotalBytes!
+                            : null,
+                        color: Colors.black45,
+                      ));
                     },
                   ),
                   Container(
@@ -198,18 +196,20 @@ class _IngredientPageState extends State<IngredientPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     RichText(
-                      text: TextSpan(children: [
-                        const WidgetSpan(
-                          alignment: PlaceholderAlignment.middle,
-                          child: Icon(
-                            Icons.thumb_up,
-                            color: Colors.white,
+                      text: TextSpan(
+                        children: [
+                          const WidgetSpan(
+                            alignment: PlaceholderAlignment.middle,
+                            child: Icon(
+                              Icons.thumb_up,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        TextSpan(
-                          text: "  ${data["likes"]}",
-                        ),
-                      ]),
+                          TextSpan(
+                            text: "  ${data["likes"]}",
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),

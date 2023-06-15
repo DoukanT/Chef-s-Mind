@@ -1,10 +1,12 @@
 import 'package:chefs_mind/pages/ingredients_list_page/ingredients_list_page.dart';
 import 'package:chefs_mind/pages/my_ingredients_page/my_ingredients_page.dart';
 import 'package:chefs_mind/pages/recipes_list_page/recipes_list_page.dart';
+import 'package:chefs_mind/services/service_locator.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 void main() {
+  setupGetIt();
   runApp(const MainPage());
 }
 
@@ -30,7 +32,7 @@ class _MainPageState extends State<MainPage> {
       ),
       home: Scaffold(
         appBar: AppBar(
-          title: const Text("Recipe App"),
+          title: const Text("ChefsMind"),
           backgroundColor: Colors.red,
           centerTitle: true,
         ),
